@@ -20,8 +20,10 @@ namespace Snowflake.Redis.Sample
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers();
-            services.Configure<SnowflakeOptions>(Configuration.GetSection("snowFlake"));
-            services.AddSnowflakeRedisService("127.0.0.1:6379,allowAdmin=true");
+            services.AddSnowflakeRedisService("127.0.0.1:6379,allowAdmin=true", 
+                option 
+                    =>Configuration.GetSection("snowFlake").Bind(option)
+                    );
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -1,9 +1,8 @@
-﻿using System;
+﻿using Snowflake.Redis.Cache;
+using System;
 using System.Net;
 using System.Threading.Tasks;
 using System.Timers;
-using Microsoft.Extensions.Options;
-using Snowflake.Redis.Cache;
 
 namespace Snowflake.Redis
 {
@@ -11,11 +10,11 @@ namespace Snowflake.Redis
     {
         private readonly ICacheAsync _cacheAsync;
 
-        public MachineIdConfig(ICacheAsync cacheAsync, IOptions<SnowflakeOptions> options)
+        public MachineIdConfig(ICacheAsync cacheAsync,SnowflakeOptions options)
         {
             this._cacheAsync = cacheAsync;
-            Name = options.Value.Name;
-            _datacenterId = options.Value.DataCenterId;
+            Name = options.Name;
+            _datacenterId = options.DataCenterId;
         }
 
         /// <summary>
@@ -31,12 +30,12 @@ namespace Snowflake.Redis
         /// <summary>
         ///     业务类型名称
         /// </summary>
-        public string Name { get; set; }
+        private string Name { get; set; }
 
         /// <summary>
         ///     本地IP地址
         /// </summary>
-        public static string LocalIp { get; set; }
+        private static string LocalIp { get; set; }
 
         /// <summary>
         ///     获取IP地址
@@ -71,7 +70,7 @@ namespace Snowflake.Redis
         /// 使用 业务名 + 组名 + IP 作为 Redis 的 key，机器IP作为 value，存储到Redis中
         /// </summary>
         /// <returns></returns>
-        public async Task<long> CreateMachineId()
+        private async Task<long> CreateMachineId()
         {
             try
             {
@@ -79,7 +78,6 @@ namespace Snowflake.Redis
                 var flag = await RegisterMachine(_machineId, LocalIp);
                 if (flag)
                 {
-                    //TODO 更新超时时间
                     UpdateExpTimeThread();
                     //返回机器ID
                     return _machineId;
@@ -177,11 +175,11 @@ namespace Snowflake.Redis
         /// <summary>
         ///     检查Redis中对应key的val是否是本机IP
         /// </summary>
-        /// <param name="mechineId"></param>
+        /// <param name="machineId"></param>
         /// <returns></returns>
-        private async Task<bool> CheckIsLocalIp(string mechineId)
+        private async Task<bool> CheckIsLocalIp(string machineId)
         {
-            string ip = await _cacheAsync.Get(Name + _datacenterId + mechineId);
+            string ip = await _cacheAsync.Get(Name + _datacenterId + machineId);
             return LocalIp.Equals(ip);
         }
 
@@ -202,18 +200,16 @@ namespace Snowflake.Redis
                 await _cacheAsync.Expire(key, 60 * 60 * 24);
                 return true;
             }
-            else
+
+            //如果key存在，判断val和当前IP是否一致，一致返回true
+            var val = await _cacheAsync.Get(key);
+            if (localIp.Equals(val))
             {
-                //如果key存在，判断val和当前IP是否一致，一致返回true
-                var val = await _cacheAsync.Get(key);
-                if (localIp.Equals(val))
-                {
-                    //IP一致，注册机器ID成功
-                    await _cacheAsync.Expire(key, 60 * 60 * 24);
-                    return true;
-                }
-                return false;
+                //IP一致，注册机器ID成功
+                await _cacheAsync.Expire(key, 60 * 60 * 24);
+                return true;
             }
+            return false;
         }
 
     }

@@ -10,6 +10,8 @@ namespace Snowflake.Redis.Sample.Controllers
     [Route("[controller]")]
     public class WeatherForecastController : ControllerBase
     {
+        private readonly SnowFlake _snowFlake;
+        
         private static readonly string[] Summaries = new[]
         {
             "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
@@ -17,22 +19,21 @@ namespace Snowflake.Redis.Sample.Controllers
 
         private readonly ILogger<WeatherForecastController> _logger;
 
-        public WeatherForecastController(ILogger<WeatherForecastController> logger)
+        public WeatherForecastController(ILogger<WeatherForecastController> logger,SnowFlake snowFlake)
         {
             _logger = logger;
+            this._snowFlake = snowFlake;
         }
 
         [HttpGet]
-        public IEnumerable<WeatherForecast> Get()
+        public IEnumerable<long> Get()
         {
-            var rng = new Random();
-            return Enumerable.Range(1, 5).Select(index => new WeatherForecast
+            List<long> list=new List<long>();
+            for (int i = 0; i < 1000; i++)
             {
-                Date = DateTime.Now.AddDays(index),
-                TemperatureC = rng.Next(-20, 55),
-                Summary = Summaries[rng.Next(Summaries.Length)]
-            })
-            .ToArray();
+                list.Add(_snowFlake.NextId());
+            }
+            return list;
         }
     }
 }
